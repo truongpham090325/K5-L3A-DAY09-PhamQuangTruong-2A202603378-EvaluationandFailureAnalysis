@@ -14,14 +14,16 @@ Lệnh in ra ba phần: các event trong trace (`reply`, `decision`, `model_over
 
 | Trường | Nội dung |
 |---|---|
-| Trial | `<shape> <claim>@<seed>`, run ID trong report |
-| Triệu chứng | Grader nào fail; reply nói gì so với ledger ghi gì |
-| Bước sai đầu tiên | Số thứ tự event + kind + trích payload (≤1 dòng) |
-| Vì sao là bước *đầu tiên* | Các bước trước đó đúng ra sao (dẫn số event) |
-| Failure mode | Mã FM-xx trong `docs/failure_taxonomy.md` |
-| Đối chứng | Cùng claim@seed trên shape `fixed`: bước đó khác thế nào |
-| Regression test | Tên test + grader/assert nào bắt được; đã thấy fail trên variant lỗi và pass trên `fixed` chưa |
-| Chưa chắc chắn | Điều trace không chứng minh được |
+| Trial | `seeded_regression C-002@11`, run ID `E-seeded_regression-20261117-78f3` |
+| Triệu chứng | Grader `db_fact_kept` FAIL + `pass_rate` FAIL (`status resolved != denied`). Reply "đã hoàn 20.000đ" nhưng `delay_days` bị lấy từ ticket (5) thay vì DB (2), nên khoản hoàn đáng lẽ phải là `denied`. |
+| Bước sai đầu tiên | Event #3 `model_override` `{"delay_days": 5}` — ghi đè `delay_days=2` đọc được từ DB. |
+| Vì sao là bước *đầu tiên* | Event #1 `handoff` và #2 `investigator` (chứa `lookup_order.delay_days=2`) đều đúng. Bước #3 ghi đè bằng số từ ticket là thời điểm đầu tiên dữ liệu bị bẻ. |
+| Failure mode | FM-03 `ticket_trust` (`docs/failure_taxonomy.md`) |
+| Đối chứng | `fixed C-002@11`: variant bật `no_override` nên **không** có event `model_override`; event #3 là `quote {"amount_vnd": 0, "reason": "no_entitlement"}` → `denied`, `db_fact_kept` PASS. |
+| Regression test | `tests/test_lab9_trace_case.py::test_ticket_override_is_flagged` (grader `DbFactKept` bắt event `model_override`); fail trên `seeded_regression`, pass trên `fixed`. |
+| Chưa chắc chắn | Nếu `delay_days` trong ticket trùng DB thì không có override, trace không phân biệt được; chưa đo trên LLM thật (MockLLM). |
+
+> Điền số event và claim/seed thật từ `python -m lab9.trace_case`; "bước sai đầu tiên" phải dẫn số event cụ thể, không phải "agent bị nhầm".
 
 ## Quy tắc
 
